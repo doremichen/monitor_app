@@ -13,7 +13,9 @@
 
 package com.adam.app.monitorapp;
 
+import android.app.AlertDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.util.Log;
 
@@ -45,16 +47,16 @@ public abstract class Utils {
     static final String VMALLOCUSED_ITEM = "VmallocUsed:";
     static final String VMALLOCCHUNK_ITEM = "VmallocChunk:";
 
-    public static void inFo(Object obj, String str) {
+    public static void info(Object obj, String str) {
         Log.i(TAG, obj.getClass().getSimpleName() + ": " + str);
     }
 
-    public static void inFo(Class<?> clazz, String str) {
+    public static void info(Class<?> clazz, String str) {
         Log.i(TAG, clazz.getSimpleName() + ": " + str);
     }
 
     public static void startMonitorServiceby(Context context, String act) {
-        inFo(Utils.class.getSimpleName(), "startMonitorServiceby +++");
+        info(Utils.class.getSimpleName(), "startMonitorServiceby +++");
         Intent intent = new Intent(context, MonitorService.class);
         intent.setAction(act);
         context.startService(intent);
@@ -63,6 +65,18 @@ public abstract class Utils {
     public static void stopService(Context context) {
         Intent intent = new Intent(context, MonitorService.class);
         context.stopService(intent);
+    }
+
+    public static void showAlertDialog(Context context, String msg, DialogInterface.OnClickListener listener) {
+        info(Utils.class, "showAlertDialog");
+        AlertDialog.Builder builder = new AlertDialog.Builder(context);
+        builder.setTitle("Info:");
+        builder.setMessage(msg);
+        builder.setPositiveButton(context.getResources().getString(R.string.label_ok_btn),
+                listener);
+        AlertDialog dialog = builder.create();
+
+        dialog.show();
     }
 
 }

@@ -15,7 +15,10 @@ package com.adam.app.monitorapp;
 
 import android.app.Service;
 import android.content.Intent;
+import android.os.Bundle;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Message;
 import android.os.RemoteCallbackList;
 import android.os.RemoteException;
 
@@ -43,6 +46,10 @@ public class MonitorService extends Service {
 
     private ScheduledExecutorService mExecutorService;
     private ScheduledFuture<?> mFuture;
+
+    // broadcast show info action
+    static final String ACTION_SHOW_INFO = "show information";
+    static final String KEY_INFO = "key.info";
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -152,6 +159,21 @@ public class MonitorService extends Service {
 
         mCBLists.finishBroadcast();
 
+    }
+
+    /**
+     * Send broadcast action
+     * @param str
+     */
+    void showInfoAction(String str) {
+        Utils.info(this, "showInfoAction");
+        Bundle data = new Bundle();
+        data.putString(KEY_INFO, str);
+        // broadcast
+        Intent intent = new Intent();
+        intent.putExtras(data);
+        intent.setAction(ACTION_SHOW_INFO);
+        this.sendBroadcast(intent);
     }
 
     // work Task
@@ -275,6 +297,11 @@ public class MonitorService extends Service {
                 if (mNeedRecord) {
                     startRecord();
                 }
+            } catch (FileNotFoundException e) {
+                String info = e.getMessage();
+                Utils.info(this, info);
+                // broadcast
+                this.mService.showInfoAction(info);
             } catch (IOException e) {
                 e.printStackTrace();
             } finally {

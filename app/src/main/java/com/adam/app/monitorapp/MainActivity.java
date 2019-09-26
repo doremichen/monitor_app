@@ -16,9 +16,11 @@ package com.adam.app.monitorapp;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
+import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.os.Bundle;
 import android.os.Handler;
@@ -58,6 +60,27 @@ public class MainActivity extends Activity {
     private Button mSettings;
 
     private Dialog mDialog;
+
+    /**
+     * Receive action from service
+     */
+    private BroadcastReceiver mReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            Utils.info(this, "onReceive...");
+            String action = intent.getAction();
+
+            if (MonitorService.ACTION_SHOW_INFO.equals(action)) {
+                // get data
+                Bundle data = intent.getExtras();
+                // get information
+                String info = data.getString(MonitorService.KEY_INFO);
+                // show dialog
+                Utils.showAlertDialog(MainActivity.this, info, null);
+            }
+        }
+    };
+
 
     // UI Hanlder
     private Handler mUiH = new Handler() {
@@ -173,9 +196,17 @@ public class MainActivity extends Activity {
         // config button function
         BtnState.INSTANCE.configBtnFuntion(false);
 
+        // register broadcast receiver
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(MonitorService.ACTION_SHOW_INFO);
+        this.registerReceiver(mReceiver, filter);
+
+
         // Start service
         Intent intent = new Intent(this, MonitorService.class);
         this.bindService(intent, mConn, Context.BIND_AUTO_CREATE);
+
+
 
     }
 

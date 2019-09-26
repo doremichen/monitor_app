@@ -24,5 +24,6 @@
     <string name="dialog_message">This is app that show the memory information.</string>
     <string name="label_cpu_work_rate">CPU total usage:</string>
     <string name="label_cpuunit">%</string>
+    <string name="label_ok_btn">"Ok"</string>
 
 </resources>
