@@ -16,6 +16,8 @@ package com.adam.app.monitorapp;
 import android.os.Parcel;
 import android.os.Parcelable;
 
+import androidx.annotation.NonNull;
+
 /**
  * <h1>MonitorData</h1>
  * 
@@ -182,4 +184,25 @@ public class MonitorData implements Parcelable {
         mCpuWork = cpuWork;
     }
 
+
+    /**
+     * toString
+     */
+    @NonNull
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("MemTotal: ").append(this.mMemToatal).append("\n");
+        sb.append("MemFree: ").append(this.mMemFree).append("\n");
+        sb.append("Buffers: ").append(this.mBuffers).append("\n");
+        sb.append("Cached: ").append(this.mCached).append("\n");
+        sb.append("Active: ").append(this.mActive).append("\n");
+        sb.append("Inactive: ").append(this.mInactive).append("\n");
+        sb.append("VmallocTotal: ").append(this.mVmallocTotal).append("\n");
+        sb.append("VmallocUsed: ").append(this.mVmallocUsed).append("\n");
+        sb.append("VmallocChunk: ").append(this.mVmallocChunk).append("\n");
+        sb.append("CpuWork: ").append(this.mCpuWork).append("\n");
+
+        return sb.toString();
+    }
 }

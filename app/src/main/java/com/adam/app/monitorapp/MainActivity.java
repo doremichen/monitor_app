@@ -1,30 +1,17 @@
-/**
- * ===========================================================================
- * Copyright Adam Sample code
- * All Rights Reserved
- * ===========================================================================
- * 
- * File Name: MainActivity.java
- * Brief: 
- * 
- * Author: AdamChen
- * Create Date: 2018/9/5
- */
-
 package com.adam.app.monitorapp;
 
-import android.app.Activity;
-import android.app.AlertDialog;
-import android.app.Dialog;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.os.Message;
 import android.os.RemoteException;
 import android.view.Menu;
@@ -35,279 +22,217 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
-public class MainActivity extends Activity {
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
+
+import com.adam.app.monitorapp.IMonitorClient;
+import com.adam.app.monitorapp.IMonitorService;
+
+public class MainActivity extends AppCompatActivity {
 
     private static final String KEY_MONITOR_DATA = "Monitor_Data";
 
-    // Service proxy
     private IMonitorService mSvrProxy;
 
-    // UI view
-    private TextView mMemNumView;
-    private TextView mMemFreeNumView;
-    private TextView mMemBuffers;
-    private TextView mMemCached;
-    private TextView mMemActive;
-    private TextView mMemInactive;
-    private TextView mMemDirty;
-    private TextView mMemVmallocTotal;
-    private TextView mMemVmallocUsed;
-    private TextView mMemVmallocChunk;
+    private TextView mMemNumView, mMemFreeNumView, mMemBuffers, mMemCached;
+    private TextView mMemActive, mMemInactive, mMemDirty;
+    private TextView mMemVmallocTotal, mMemVmallocUsed, mMemVmallocChunk;
     private TextView mCpuWork;
 
-    private Button mStartRecord;
-    private Button mStopRecord;
-    private Button mSettings;
+    private Button mStartRecord, mStopRecord, mSettings;
 
-    private Dialog mDialog;
+    private AlertDialog mDialog;
 
-    /**
-     * Receive action from service
-     */
-    private BroadcastReceiver mReceiver = new BroadcastReceiver() {
+    private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            Utils.info(this, "onReceive...");
-            String action = intent.getAction();
-
-            if (MonitorService.ACTION_SHOW_INFO.equals(action)) {
-                // get data
-                Bundle data = intent.getExtras();
-                // get information
-                String info = data.getString(MonitorService.KEY_INFO);
-                // show dialog
-                Utils.showAlertDialog(MainActivity.this, info, null);
+            if (MonitorService.ACTION_SHOW_INFO.equals(intent.getAction())) {
+                String info = intent.getStringExtra(MonitorService.KEY_INFO);
+                showAlert(info);
             }
         }
     };
 
-
-    // UI Hanlder
-    private Handler mUiH = new Handler() {
-
+    private final Handler mUiH = new Handler(Looper.getMainLooper()) {
         @Override
         public void handleMessage(Message msg) {
             super.handleMessage(msg);
-
-            Bundle bundle = msg.getData();
-            MonitorData data = bundle.getParcelable(KEY_MONITOR_DATA);
-
-            // show mem total
-            mMemNumView.setText(data.getMemTotal() + " ");
-            mMemFreeNumView.setText(data.getMemfree() + " ");
-            mMemBuffers.setText(data.getBuffers() + " ");
-            mMemCached.setText(data.getCached() + " ");
-            mMemActive.setText(data.getActive() + " ");
-            mMemInactive.setText(data.getInactive() + " ");
-            mMemDirty.setText(data.getDirty() + " ");
-            mMemVmallocTotal.setText(data.getVmallocTotal() + " ");
-            mMemVmallocUsed.setText(data.getVmallocUsed() + " ");
-            mMemVmallocChunk.setText(data.getVmallocChunk() + " ");
-            mCpuWork.setText(data.getCpuWork() + " ");
+            MonitorData data = msg.getData().getParcelable(KEY_MONITOR_DATA);
+            if (data != null) {
+                updateUI(data);
+            }
         }
-
     };
 
-    // Service callBack service
-    private IMonitorClient mCallBack = new IMonitorClient.Stub() {
-
+    private final IMonitorClient mCallBack = new IMonitorClient.Stub() {
         @Override
         public void update(MonitorData data) throws RemoteException {
+            // log monitor data
+            Utils.info(MainActivity.this, "Receive data:\n" + data.toString());
 
             if (data != null) {
                 Message message = Message.obtain(mUiH);
                 Bundle bundle = new Bundle();
                 bundle.putParcelable(KEY_MONITOR_DATA, data);
                 message.setData(bundle);
-
-                // send message to ui hanlder
                 mUiH.sendMessage(message);
-
             }
-
         }
     };
 
-    private ServiceConnection mConn = new ServiceConnection() {
-
+    private final ServiceConnection mConn = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
-
             mSvrProxy = IMonitorService.Stub.asInterface(service);
-
-            // rehister notufy
             try {
                 mSvrProxy.registerCB(mCallBack);
+                Utils.startMonitorServiceby(MainActivity.this, Utils.ACTION_UPDATE_VIEW);
             } catch (RemoteException e) {
                 e.printStackTrace();
             }
-
-            // Start schedule to update view
-            Utils.startMonitorServiceby(MainActivity.this,
-                    Utils.ACTION_UPDATE_VIEW);
-
         }
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
-
-            // unregister notidy
             try {
-                mSvrProxy.unregisterCB(mCallBack);
+                if (mSvrProxy != null) {
+                    mSvrProxy.unregisterCB(mCallBack);
+                }
             } catch (RemoteException e) {
                 e.printStackTrace();
             }
-
             mSvrProxy = null;
         }
-
     };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
-        mMemNumView = (TextView) this.findViewById(R.id.MemTotalNum);
-        mMemFreeNumView = (TextView) this.findViewById(R.id.MemFreeNum);
-        mMemBuffers = (TextView) this.findViewById(R.id.MemBufferNum);
-        mMemCached = (TextView) this.findViewById(R.id.MemCachedNum);
-        mMemActive = (TextView) this.findViewById(R.id.MemActiveNum);
-        mMemInactive = (TextView) this.findViewById(R.id.MemInactiveNum);
-        mMemDirty = (TextView) this.findViewById(R.id.MemDirtyNum);
-        mMemVmallocTotal = (TextView) this
-                .findViewById(R.id.MemVmallocTotalNum);
-        mMemVmallocUsed = (TextView) this.findViewById(R.id.MemVmallocUsedNum);
-        mMemVmallocChunk = (TextView) this
-                .findViewById(R.id.MemVmallocChunkNum);
-        mCpuWork = (TextView) this.findViewById(R.id.CpuWorkNum);
-
-        mStartRecord = (Button) this.findViewById(R.id.btn_record);
-        mStopRecord = (Button) this.findViewById(R.id.btn_stop);
-        mSettings = (Button) this.findViewById(R.id.btn_start_gc);
-
-        mDialog = this.buildDialog();
-
+        initViews();
         BtnState.registerBtn(mStartRecord, mStopRecord, mSettings);
-
-        // config button function
         BtnState.INSTANCE.configBtnFuntion(false);
 
-        // register broadcast receiver
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(MonitorService.ACTION_SHOW_INFO);
-        this.registerReceiver(mReceiver, filter);
+        IntentFilter filter = new IntentFilter(MonitorService.ACTION_SHOW_INFO);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            registerReceiver(mReceiver, filter, Context.RECEIVER_EXPORTED);
+        } else {
+            registerReceiver(mReceiver, filter);
+        }
 
-
-        // Start service
         Intent intent = new Intent(this, MonitorService.class);
-        this.bindService(intent, mConn, Context.BIND_AUTO_CREATE);
-
-
-
+        bindService(intent, mConn, Context.BIND_AUTO_CREATE);
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-
-        // unregister notidy
         try {
-            mSvrProxy.unregisterCB(mCallBack);
+            if (mSvrProxy != null) {
+                mSvrProxy.unregisterCB(mCallBack);
+            }
         } catch (RemoteException e) {
             e.printStackTrace();
         }
-
-        // Stop service
-        this.unbindService(mConn);
+        unbindService(mConn);
         Utils.stopService(this);
     }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-
-        // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.main, menu);
         return true;
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-        if (id == R.id.action_settings) {
+        if (item.getItemId() == R.id.action_settings) {
             return true;
         }
         return super.onOptionsItemSelected(item);
     }
 
-    /**
-     * Button handler
-     */
+    private void initViews() {
+        mMemNumView = findViewById(R.id.MemTotalNum);
+        mMemFreeNumView = findViewById(R.id.MemFreeNum);
+        mMemBuffers = findViewById(R.id.MemBufferNum);
+        mMemCached = findViewById(R.id.MemCachedNum);
+        mMemActive = findViewById(R.id.MemActiveNum);
+        mMemInactive = findViewById(R.id.MemInactiveNum);
+        mMemDirty = findViewById(R.id.MemDirtyNum);
+        mMemVmallocTotal = findViewById(R.id.MemVmallocTotalNum);
+        mMemVmallocUsed = findViewById(R.id.MemVmallocUsedNum);
+        mMemVmallocChunk = findViewById(R.id.MemVmallocChunkNum);
+        mCpuWork = findViewById(R.id.CpuWorkNum);
+
+        mStartRecord = findViewById(R.id.btn_record);
+        mStopRecord = findViewById(R.id.btn_stop);
+        mSettings = findViewById(R.id.btn_start_gc);
+
+        mDialog = new AlertDialog.Builder(this)
+                .setTitle(R.string.dialog_title)
+                .setMessage(R.string.dialog_message)
+                .setPositiveButton(android.R.string.ok, null)
+                .create();
+    }
+
+    private void updateUI(MonitorData data) {
+        mMemNumView.setText(data.getMemTotal() + " ");
+        mMemFreeNumView.setText(data.getMemfree() + " ");
+        mMemBuffers.setText(data.getBuffers() + " ");
+        mMemCached.setText(data.getCached() + " ");
+        mMemActive.setText(data.getActive() + " ");
+        mMemInactive.setText(data.getInactive() + " ");
+        mMemDirty.setText(data.getDirty() + " ");
+        mMemVmallocTotal.setText(data.getVmallocTotal() + " ");
+        mMemVmallocUsed.setText(data.getVmallocUsed() + " ");
+        mMemVmallocChunk.setText(data.getVmallocChunk() + " ");
+        mCpuWork.setText(data.getCpuWork() + " ");
+    }
+
     public void onStartRecord(View v) {
-        showInfo("start recording...");
-        // config button function
+        showInfo("Start recording...");
         BtnState.INSTANCE.configBtnFuntion(true);
-
         Utils.startMonitorServiceby(this, Utils.ACTION_START_RECORD);
-
     }
 
     public void onStopRecord(View v) {
-        showInfo("stop recording...");
-        // config button function
+        showInfo("Stop recording...");
         BtnState.INSTANCE.configBtnFuntion(false);
-
         Utils.startMonitorServiceby(this, Utils.ACTION_STOP_RECORD);
     }
 
     public void onGC(View v) {
-
-        showInfo("Start gc...");
-
-        // start gc
+        showInfo("Start GC...");
         Runtime.getRuntime().gc();
     }
 
     public void onExit(View v) {
-
-        // finish ui
-        this.finish();
+        finish();
     }
 
     public void onAbout(View v) {
-
         mDialog.show();
     }
 
-    /**
-     * Show info
-     */
     public void showInfo(String msg) {
         Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
     }
 
-    public Dialog buildDialog() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle(R.string.dialog_title);
-        builder.setMessage(R.string.dialog_message);
-
-        return builder.create();
+    private void showAlert(String msg) {
+        new AlertDialog.Builder(this)
+                .setTitle("Info")
+                .setMessage(msg)
+                .setPositiveButton(android.R.string.ok, null)
+                .show();
     }
 
     private enum BtnState {
-
         INSTANCE;
 
-        private static Button mStartBtn;
-        private static Button mStopBtn;
-        private static Button mSettingBtn;
+        private static Button mStartBtn, mStopBtn, mSettingBtn;
 
         public static void registerBtn(Button start, Button stop, Button setting) {
             mStartBtn = start;
@@ -315,11 +240,10 @@ public class MainActivity extends Activity {
             mSettingBtn = setting;
         }
 
-        void configBtnFuntion(boolean enable) {
-            mStartBtn.setEnabled(!enable);
-            mStopBtn.setEnabled(enable);
-            mSettingBtn.setEnabled(!enable);
+        void configBtnFuntion(boolean isRecording) {
+            mStartBtn.setEnabled(!isRecording);
+            mStopBtn.setEnabled(isRecording);
+            mSettingBtn.setEnabled(!isRecording);
         }
     }
-
 }

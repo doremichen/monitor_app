@@ -21,12 +21,14 @@ import android.os.IBinder;
 import android.os.Message;
 import android.os.RemoteCallbackList;
 import android.os.RemoteException;
+import android.util.Log;
 
 import java.io.BufferedReader;
 import java.io.Closeable;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.util.Calendar;
 import java.util.concurrent.Executors;
@@ -42,7 +44,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class MonitorService extends Service {
 
-    private RemoteCallbackList<IMonitorClient> mCBLists = new RemoteCallbackList<IMonitorClient>();
+    private final RemoteCallbackList<IMonitorClient> mCBLists = new RemoteCallbackList<IMonitorClient>();
 
     private ScheduledExecutorService mExecutorService;
     private ScheduledFuture<?> mFuture;
@@ -67,13 +69,33 @@ public class MonitorService extends Service {
 
     private void scheduleReaderTask() {
 
-        if ((mFuture != null) && (mFuture.isCancelled() == false)) {
+//        Utils.info(this, getCpuInfo());
+
+
+        if ((mFuture != null) && (!mFuture.isCancelled())) {
             mFuture.cancel(true);
         }
 
         mReadTask = new ReaderTask(this);
-        mFuture = mExecutorService.scheduleAtFixedRate(mReadTask, 1L, 1L,
+        mFuture = mExecutorService.scheduleWithFixedDelay(mReadTask, 1L, 1L,
                 TimeUnit.SECONDS);
+    }
+
+    private String getCpuInfo() {
+        StringBuilder cpuInfo = new StringBuilder();
+        try {
+            BufferedReader reader = new BufferedReader(
+                    new FileReader("/proc/cpuinfo")
+            );
+            String line;
+            while ((line = reader.readLine()) != null) {
+                cpuInfo.append(line).append("\n");
+            }
+            reader.close();
+        } catch (IOException e) {
+            cpuInfo.append("Error reading CPU info: ").append(e.getMessage());
+        }
+        return cpuInfo.toString();
     }
 
     @Override
@@ -115,7 +137,8 @@ public class MonitorService extends Service {
     }
 
     private void cancelAndFinishThreadPool() {
-        if ((mFuture != null) && (mFuture.isCancelled() == false)) {
+        Utils.info(this, "cancelAndFinishThreadPool");
+        if ((mFuture != null) && (!mFuture.isCancelled())) {
             mFuture.cancel(true);
         }
 
@@ -123,7 +146,6 @@ public class MonitorService extends Service {
 
         try {
             while (!mExecutorService.awaitTermination(3L, TimeUnit.SECONDS)) {
-                ;
             }
         } catch (InterruptedException e) {
             e.printStackTrace();
@@ -144,12 +166,13 @@ public class MonitorService extends Service {
     }
 
     public void readData(MonitorData data) {
-
+        Utils.info(this, "readData");
         final int size = mCBLists.beginBroadcast();
 
         for (int i = 0; i < size; i++) {
 
             try {
+                Utils.info(this, "start to update!!!");
                 mCBLists.getBroadcastItem(i).update(data);
             } catch (RemoteException e) {
                 e.printStackTrace();
@@ -179,9 +202,9 @@ public class MonitorService extends Service {
     // work Task
     private static class ReaderTask implements Runnable {
 
-        private MonitorService mService;
+        private final MonitorService mService;
 
-        private MonitorData mData;
+        private final MonitorData mData;
 
         // record information
         private OutputStreamWriter mWriter;
@@ -268,30 +291,59 @@ public class MonitorService extends Service {
                     meminfo = mReader.readLine();
                 }
 
-                mReader = new BufferedReader(new FileReader(
-                        Utils.PROC_STAT_PATH));
-                String[] cpuState = mReader.readLine().split("[ ]+", 9);
-                long work = Long.parseLong(cpuState[1])
-                        + Long.parseLong(cpuState[2])
-                        + Long.parseLong(cpuState[3]);
-                long total = work + Long.parseLong(cpuState[4])
-                        + Long.parseLong(cpuState[5])
-                        + Long.parseLong(cpuState[6])
-                        + Long.parseLong(cpuState[7]);
+                // log memory info
+                Utils.info(this, "memeinfor:\n" + this.mData.toString());
 
-                if (this.mTotalBefoure != 0) {
-                    long workTemp = work - this.mWorkBefoure;
-                    long totalTemp = total - this.mTotalBefoure;
-                    float cpuWork = (workTemp * 100.0f) / totalTemp;
-                    String cpuAverage = String.format("%.2f", cpuWork);
 
-                    this.mData.setCpuWork(cpuAverage);
-                } else {
-                    this.mData.setCpuWork("0.00");
-                }
+                // log cpu usage
+                String cpuInfo = Utils.readCpuUsageFromTop();
+                Utils.info(this, "cpuInfo:\n" + cpuInfo);
+                String[] cpuState = cpuInfo.split("[ ]+", 9);
+                // dump cpuState by loop
+//                for (String state : cpuState) {
+//                    Utils.info(this, "state: " + state);
+//                }
+                double cpuWork = Utils.calculateCpuUsage(cpuInfo);
+                String cpuAverage = String.format("%.2f", cpuWork);
+                this.mData.setCpuWork(cpuAverage);
 
-                this.mWorkBefoure = work;
-                this.mTotalBefoure = total;
+//                Process process = Runtime.getRuntime().exec("top -n 1");
+//                mReader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+//                try {
+//                    mReader = new BufferedReader(new FileReader(
+//                            Utils.PROC_STAT_PATH));
+//                    String[] cpuState = mReader.readLine().split("[ ]+", 9);
+//                    // dump cpuState by loop
+//                    for (String state : cpuState) {
+//                        Utils.info(this, "state: " + state);
+//                    }
+//                } catch (Exception e) {
+//                    // log exception
+//                    Utils.info(this, e.getMessage());
+//
+//                }
+
+//                long work = Long.parseLong(cpuState[1])
+//                        + Long.parseLong(cpuState[2])
+//                        + Long.parseLong(cpuState[3]);
+//                long total = work + Long.parseLong(cpuState[4])
+//                        + Long.parseLong(cpuState[5])
+//                        + Long.parseLong(cpuState[6])
+//                        + Long.parseLong(cpuState[7]);
+//
+//                if (this.mTotalBefoure != 0) {
+//                    long workTemp = work - this.mWorkBefoure;
+//                    long totalTemp = total - this.mTotalBefoure;
+//                    float cpuWork = (workTemp * 100.0f) / totalTemp;
+//                    String cpuAverage = String.format("%.2f", cpuWork);
+//
+//                    this.mData.setCpuWork(cpuAverage);
+//                } else {
+//                    this.mData.setCpuWork("0.00");
+//                }
+
+//                this.mWorkBefoure = work;
+//                this.mTotalBefoure = total;
 
                 this.mService.readData(this.mData);
                 if (mNeedRecord) {
@@ -399,14 +451,14 @@ public class MonitorService extends Service {
 
     }
 
-    private MonitorServiceStub mNatievBinder = new MonitorServiceStub(this);
+    private final MonitorServiceStub mNatievBinder = new MonitorServiceStub(this);
 
     private ReaderTask mReadTask;
 
     // The stub of the monitor service
     private static class MonitorServiceStub extends IMonitorService.Stub {
 
-        private MonitorService mService;
+        private final MonitorService mService;
 
         public MonitorServiceStub(MonitorService svr) {
             this.mService = svr;

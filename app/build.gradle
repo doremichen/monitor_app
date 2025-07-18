@@ -1,13 +1,12 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 26
-    buildToolsVersion "28.0.3"
+    compileSdkVersion 35
 
     defaultConfig {
         applicationId "com.adam.app.monitorapp"
-        minSdkVersion 14
-        targetSdkVersion 26
+        minSdkVersion 21
+        targetSdkVersion 35
     }
 
     buildTypes {
@@ -16,8 +15,20 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.txt'
         }
     }
+    buildFeatures {
+        aidl true
+    }
+
+    lint {
+        baseline = file("lint-baseline.xml")
+    }
+
+    namespace 'com.adam.app.monitorapp'
 }
 
 dependencies {
-    implementation 'com.android.support:support-v4:26.+'
+    // AppCompat Library for backward compatibility and AlertDialog
+    implementation 'androidx.appcompat:appcompat:1.7.1'
+    implementation 'androidx.constraintlayout:constraintlayout:2.2.1'
+    implementation 'com.google.android.material:material:1.12.0'
 }

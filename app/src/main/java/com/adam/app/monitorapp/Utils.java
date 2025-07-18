@@ -19,6 +19,9 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.util.Log;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+
 /**
  * <h1>Utils</h1>
  * 
@@ -78,5 +81,61 @@ public abstract class Utils {
 
         dialog.show();
     }
+
+    public static String readCpuUsageFromTop() {
+        StringBuilder output = new StringBuilder();
+        try {
+            Process process = new ProcessBuilder("top", "-n", "1")
+                    .redirectErrorStream(true)
+                    .start();
+
+            BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(process.getInputStream())
+            );
+
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (line.toLowerCase().contains("cpu")) {
+                    return line;
+                }
+            }
+
+            return "Can not get CPU usage!!!";
+        } catch (Exception e) {
+            return "Error: " + e.getMessage();
+        }
+    }
+
+    public static double calculateCpuUsage(String cpuLine) {
+        // 假設輸入字串如: "400%cpu   0%user   0%nice   0%sys   400%idle   0%iow   0%irq   0%sirq   0%host"
+        try {
+            String[] parts = cpuLine.split("\\s+");
+
+            int user = 0, nice = 0, sys = 0, idle = 0;
+
+            for (String part : parts) {
+                if (part.endsWith("%user")) {
+                    user = Integer.parseInt(part.replace("%user", ""));
+                } else if (part.endsWith("%nice")) {
+                    nice = Integer.parseInt(part.replace("%nice", ""));
+                } else if (part.endsWith("%sys")) {
+                    sys = Integer.parseInt(part.replace("%sys", ""));
+                } else if (part.endsWith("%idle")) {
+                    idle = Integer.parseInt(part.replace("%idle", ""));
+                }
+            }
+
+            int used = user + nice + sys;
+            int total = used + idle;
+
+            if (total == 0) return 0;
+
+            return (used * 100.0) / total;
+
+        } catch (Exception e) {
+            return -1; // 表示解析錯誤
+        }
+    }
+
 
 }
