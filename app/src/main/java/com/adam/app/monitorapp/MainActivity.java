@@ -1,9 +1,13 @@
+/**
+ * Description: This class is the main activity of monitor system application
+ * Author: AdamChen
+ * Date: 2025/07/18
+ */
 package com.adam.app.monitorapp;
 
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
@@ -23,11 +27,9 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.OnBackPressedCallback;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
-
-import com.adam.app.monitorapp.IMonitorClient;
-import com.adam.app.monitorapp.IMonitorService;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -37,16 +39,20 @@ public class MainActivity extends AppCompatActivity {
 
     private TextView mMemNumView, mMemFreeNumView, mMemBuffers, mMemCached;
     private TextView mMemActive, mMemInactive, mMemDirty;
-    private TextView mMemVmallocTotal, mMemVmallocUsed, mMemVmallocChunk;
+    private TextView mMemVmAllocTotal, mMemVmAllocUsed, mMemVmAllocChunk;
     private TextView mCpuWork;
 
     private Button mStartRecord, mStopRecord, mSettings;
 
     private AlertDialog mDialog;
 
+    /**
+     * Receive broadcast action from MonitorService
+     */
     private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
+            // receive broadcast action
             if (MonitorService.ACTION_SHOW_INFO.equals(intent.getAction())) {
                 String info = intent.getStringExtra(MonitorService.KEY_INFO);
                 showAlert(info);
@@ -54,10 +60,14 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
+    /**
+     * Update UI thread handler to update UI
+     */
     private final Handler mUiH = new Handler(Looper.getMainLooper()) {
         @Override
-        public void handleMessage(Message msg) {
+        public void handleMessage(@NonNull Message msg) {
             super.handleMessage(msg);
+            // receive message from service
             MonitorData data = msg.getData().getParcelable(KEY_MONITOR_DATA);
             if (data != null) {
                 updateUI(data);
@@ -65,10 +75,12 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
+    /**
+     * Callback from MonitorService
+     */
     private final IMonitorClient mCallBack = new IMonitorClient.Stub() {
         @Override
         public void update(MonitorData data) throws RemoteException {
-            Utils.info(this, "update");
             if (data != null) {
                 Message message = Message.obtain(mUiH);
                 Bundle bundle = new Bundle();
@@ -79,6 +91,9 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
+    /**
+     * Connect to MonitorService and register callback
+     */
     private final ServiceConnection mConn = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
@@ -182,9 +197,9 @@ public class MainActivity extends AppCompatActivity {
         mMemActive = findViewById(R.id.MemActiveNum);
         mMemInactive = findViewById(R.id.MemInactiveNum);
         mMemDirty = findViewById(R.id.MemDirtyNum);
-        mMemVmallocTotal = findViewById(R.id.MemVmallocTotalNum);
-        mMemVmallocUsed = findViewById(R.id.MemVmallocUsedNum);
-        mMemVmallocChunk = findViewById(R.id.MemVmallocChunkNum);
+        mMemVmAllocTotal = findViewById(R.id.MemVmallocTotalNum);
+        mMemVmAllocUsed = findViewById(R.id.MemVmallocUsedNum);
+        mMemVmAllocChunk = findViewById(R.id.MemVmallocChunkNum);
         mCpuWork = findViewById(R.id.CpuWorkNum);
 
         mStartRecord = findViewById(R.id.btn_record);
@@ -199,17 +214,17 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void updateUI(MonitorData data) {
-        mMemNumView.setText(data.getMemTotal() + " ");
-        mMemFreeNumView.setText(data.getMemfree() + " ");
-        mMemBuffers.setText(data.getBuffers() + " ");
-        mMemCached.setText(data.getCached() + " ");
-        mMemActive.setText(data.getActive() + " ");
-        mMemInactive.setText(data.getInactive() + " ");
-        mMemDirty.setText(data.getDirty() + " ");
-        mMemVmallocTotal.setText(data.getVmallocTotal() + " ");
-        mMemVmallocUsed.setText(data.getVmallocUsed() + " ");
-        mMemVmallocChunk.setText(data.getVmallocChunk() + " ");
-        mCpuWork.setText(data.getCpuWork() + " ");
+        mMemNumView.setText(data.getMemTotal());
+        mMemFreeNumView.setText(data.getMemfree());
+        mMemBuffers.setText(data.getBuffers());
+        mMemCached.setText(data.getCached());
+        mMemActive.setText(data.getActive());
+        mMemInactive.setText(data.getInactive());
+        mMemDirty.setText(data.getDirty());
+        mMemVmAllocTotal.setText(data.getVmallocTotal());
+        mMemVmAllocUsed.setText(data.getVmallocUsed());
+        mMemVmAllocChunk.setText(data.getVmallocChunk());
+        mCpuWork.setText(data.getCpuWork());
     }
 
     public void onStartRecord(View v) {

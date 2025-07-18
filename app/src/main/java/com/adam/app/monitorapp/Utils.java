@@ -85,7 +85,7 @@ public abstract class Utils {
     public static String readCpuUsageFromTop() {
         StringBuilder output = new StringBuilder();
         try {
-            Process process = new ProcessBuilder("top", "-n", "1")
+            Process process = new ProcessBuilder("top", "-n", "2", "-d", "0.3")
                     .redirectErrorStream(true)
                     .start();
 

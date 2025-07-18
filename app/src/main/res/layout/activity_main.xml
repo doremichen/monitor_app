@@ -23,8 +23,9 @@
             android:layout_height="wrap_content" >
 
             <TextView
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_marginStart="15sp"
                 android:textColor="#FFFFFFFF"
                 android:layout_weight="1"
                 android:text="@string/label_memtotal" />
@@ -33,8 +34,9 @@
                 android:id="@+id/MemTotalNum"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginEnd="5dp"
                 android:textColor="#FFFFFFFF"
-                android:gravity="right"
+                android:gravity="start"
                 android:textSize="13sp" />
 
             <TextView
@@ -49,9 +51,9 @@
             android:layout_height="wrap_content" >
 
             <TextView
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginLeft="15sp"
+                android:layout_marginStart="15sp"
                 android:textColor="#ff00ff00"
                 android:layout_weight="1"
                 android:text="@string/label_memfree" />
@@ -60,8 +62,9 @@
                 android:id="@+id/MemFreeNum"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginEnd="5dp"
                 android:textColor="#ff00ff00"
-                android:gravity="right"
+                android:gravity="start"
                 android:textSize="13sp" />
 
             <TextView
@@ -76,9 +79,9 @@
             android:layout_height="wrap_content" >
 
             <TextView
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginLeft="15sp"
+                android:layout_marginStart="15sp"
                 android:textColor="#ff00ff00"
                 android:layout_weight="1"
                 android:text="@string/label_buffers" />
@@ -87,8 +90,9 @@
                 android:id="@+id/MemBufferNum"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginEnd="5dp"
                 android:textColor="#ff00ff00"
-                android:gravity="right"
+                android:gravity="start"
                 android:textSize="13sp" />
 
             <TextView
@@ -103,9 +107,9 @@
             android:layout_height="wrap_content" >
 
             <TextView
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginLeft="15sp"
+                android:layout_marginStart="15sp"
                 android:textColor="#ff00ff00"
                 android:layout_weight="1"
                 android:text="@string/label_cached" />
@@ -114,8 +118,9 @@
                 android:id="@+id/MemCachedNum"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginEnd="5dp"
                 android:textColor="#ff00ff00"
-                android:gravity="right"
+                android:gravity="start"
                 android:textSize="13sp" />
 
             <TextView
@@ -130,9 +135,9 @@
             android:layout_height="wrap_content" >
 
             <TextView
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginLeft="15sp"
+                android:layout_marginStart="15sp"
                 android:textColor="#ff00ff00"
                 android:layout_weight="1"
                 android:text="@string/label_active" />
@@ -141,8 +146,9 @@
                 android:id="@+id/MemActiveNum"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginEnd="5dp"
                 android:textColor="#ff00ff00"
-                android:gravity="right"
+                android:gravity="start"
                 android:textSize="13sp" />
 
             <TextView
@@ -157,10 +163,10 @@
             android:layout_height="wrap_content" >
 
             <TextView
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:textColor="#ff00ff00"
-                android:layout_marginLeft="15sp"
+                android:layout_marginStart="15sp"
                 android:layout_weight="1"
                 android:text="@string/label_inactive" />
 
@@ -168,8 +174,9 @@
                 android:id="@+id/MemInactiveNum"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginEnd="5dp"
                 android:textColor="#ff00ff00"
-                android:gravity="right"
+                android:gravity="start"
                 android:textSize="13sp" />
 
             <TextView
@@ -184,10 +191,10 @@
             android:layout_height="wrap_content" >
 
             <TextView
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:textColor="#ff00ff00"
-                android:layout_marginLeft="15sp"
+                android:layout_marginStart="15sp"
                 android:layout_weight="1"
                 android:text="@string/label_dirty" />
 
@@ -195,8 +202,9 @@
                 android:id="@+id/MemDirtyNum"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginEnd="5dp"
                 android:textColor="#ff00ff00"
-                android:gravity="right"
+                android:gravity="start"
                 android:textSize="13sp" />
 
             <TextView
@@ -211,10 +219,10 @@
             android:layout_height="wrap_content" >
 
             <TextView
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:textColor="#ff00ff00"
-                android:layout_marginLeft="15sp"
+                android:layout_marginStart="15sp"
                 android:layout_weight="1"
                 android:text="@string/label_vmalloctotal" />
 
@@ -222,8 +230,9 @@
                 android:id="@+id/MemVmallocTotalNum"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginEnd="5dp"
                 android:textColor="#ff00ff00"
-                android:gravity="right"
+                android:gravity="start"
                 android:textSize="13sp" />
 
             <TextView
@@ -238,10 +247,10 @@
             android:layout_height="wrap_content" >
 
             <TextView
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:textColor="#ff00ff00"
-                android:layout_marginLeft="15sp"
+                android:layout_marginStart="15sp"
                 android:layout_weight="1"
                 android:text="@string/label_vmallocused" />
 
@@ -249,8 +258,9 @@
                 android:id="@+id/MemVmallocUsedNum"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginEnd="5dp"
                 android:textColor="#ff00ff00"
-                android:gravity="right"
+                android:gravity="start"
                 android:textSize="13sp" />
 
             <TextView
@@ -265,10 +275,10 @@
             android:layout_height="wrap_content" >
 
             <TextView
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:textColor="#ff00ff00"
-                android:layout_marginLeft="15sp"
+                android:layout_marginStart="15sp"
                 android:layout_weight="1"
                 android:text="@string/label_vmallocchunk" />
 
@@ -276,8 +286,9 @@
                 android:id="@+id/MemVmallocChunkNum"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginEnd="5dp"
                 android:textColor="#ff00ff00"
-                android:gravity="right"
+                android:gravity="start"
                 android:textSize="13sp" />
 
             <TextView
@@ -290,7 +301,7 @@
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="0dp"
         android:layout_weight="0.96"
         android:background="#181818"
         android:orientation="vertical" >
@@ -300,8 +311,9 @@
             android:layout_height="wrap_content" >
 
             <TextView
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_marginStart="15sp"
                 android:textColor="#FFFFFFFF"
                 android:layout_weight="1"
                 android:text="@string/label_cpu_work_rate" />
@@ -310,8 +322,9 @@
                 android:id="@+id/CpuWorkNum"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginEnd="10dp"
                 android:textColor="#FFFFFFFF"
-                android:gravity="right"
+                android:gravity="start"
                 android:textSize="13sp" />
 
             <TextView
@@ -364,7 +377,7 @@
 
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
+            android:layout_height="0dp"
             android:layout_weight="1" >
 
             <LinearLayout
