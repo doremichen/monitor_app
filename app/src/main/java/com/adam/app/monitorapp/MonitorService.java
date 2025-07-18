@@ -126,6 +126,7 @@ public class MonitorService extends Service {
 
     @Override
     public void onDestroy() {
+        Utils.info(this, "onDestroy");
         super.onDestroy();
 
         if (mReadTask != null) {
@@ -139,9 +140,11 @@ public class MonitorService extends Service {
     private void cancelAndFinishThreadPool() {
         Utils.info(this, "cancelAndFinishThreadPool");
         if ((mFuture != null) && (!mFuture.isCancelled())) {
+            Utils.info(this, "cancel task!!!");
             mFuture.cancel(true);
         }
 
+        Utils.info(this, "shutdown thread pool");
         mExecutorService.shutdown();
 
         try {
@@ -152,6 +155,8 @@ public class MonitorService extends Service {
         } finally {
             mReadTask = null;
             mExecutorService = null;
+            mFuture = null;
+            Utils.info(this, "thread pool finished");
         }
     }
 
@@ -291,13 +296,10 @@ public class MonitorService extends Service {
                     meminfo = mReader.readLine();
                 }
 
-                // log memory info
-                Utils.info(this, "memeinfor:\n" + this.mData.toString());
-
 
                 // log cpu usage
                 String cpuInfo = Utils.readCpuUsageFromTop();
-                Utils.info(this, "cpuInfo:\n" + cpuInfo);
+                Utils.info(this, "cpuInfo: " + cpuInfo);
                 String[] cpuState = cpuInfo.split("[ ]+", 9);
                 // dump cpuState by loop
 //                for (String state : cpuState) {

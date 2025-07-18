@@ -22,6 +22,7 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -67,9 +68,7 @@ public class MainActivity extends AppCompatActivity {
     private final IMonitorClient mCallBack = new IMonitorClient.Stub() {
         @Override
         public void update(MonitorData data) throws RemoteException {
-            // log monitor data
-            Utils.info(MainActivity.this, "Receive data:\n" + data.toString());
-
+            Utils.info(this, "update");
             if (data != null) {
                 Message message = Message.obtain(mUiH);
                 Bundle bundle = new Bundle();
@@ -122,13 +121,32 @@ public class MainActivity extends AppCompatActivity {
             registerReceiver(mReceiver, filter);
         }
 
+        // get back pressed dispatcher
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                Utils.info(MainActivity.this, "on back pressed");
+                finish();
+            }
+        });
+
+
         Intent intent = new Intent(this, MonitorService.class);
         bindService(intent, mConn, Context.BIND_AUTO_CREATE);
     }
 
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        Utils.info(this, "onDestroy");
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            unregisterReceiver(mReceiver);
+        } else {
+            unregisterReceiver(mReceiver);
+        }
+
         try {
             if (mSvrProxy != null) {
                 mSvrProxy.unregisterCB(mCallBack);
@@ -136,6 +154,8 @@ public class MainActivity extends AppCompatActivity {
         } catch (RemoteException e) {
             e.printStackTrace();
         }
+        mSvrProxy = null;
+
         unbindService(mConn);
         Utils.stopService(this);
     }
