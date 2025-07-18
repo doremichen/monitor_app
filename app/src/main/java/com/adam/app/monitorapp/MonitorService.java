@@ -5,36 +5,35 @@
  * ===========================================================================
  * 
  * File Name: MonitorService.java
- * Brief: 
+ * Brief: This class is the service of monitor app.
  * 
  * Author: AdamChen
  * Create Date: 2018/9/5
  */
-
 package com.adam.app.monitorapp;
 
 import android.app.Service;
 import android.content.Intent;
 import android.os.Bundle;
-import android.os.Handler;
 import android.os.IBinder;
-import android.os.Message;
 import android.os.RemoteCallbackList;
 import android.os.RemoteException;
-import android.util.Log;
 
 import java.io.BufferedReader;
-import java.io.Closeable;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.lang.ref.WeakReference;
 import java.util.Calendar;
+import java.util.HashMap;
+import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 /**
  * <h1>MonitorService</h1>
@@ -44,7 +43,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class MonitorService extends Service {
 
-    private final RemoteCallbackList<IMonitorClient> mCBLists = new RemoteCallbackList<IMonitorClient>();
+    private final RemoteCallbackList<IMonitorClient> mCBLists = new RemoteCallbackList<>();
 
     private ScheduledExecutorService mExecutorService;
     private ScheduledFuture<?> mFuture;
@@ -55,7 +54,7 @@ public class MonitorService extends Service {
 
     @Override
     public IBinder onBind(Intent intent) {
-        return mNatievBinder.asBinder();
+        return mNativeBinder.asBinder();
     }
 
     @Override
@@ -69,8 +68,9 @@ public class MonitorService extends Service {
 
     private void scheduleReaderTask() {
 
-//        Utils.info(this, getCpuInfo());
-
+        if (mExecutorService == null) {
+            throw new RuntimeException("No thread pool");
+        }
 
         if ((mFuture != null) && (!mFuture.isCancelled())) {
             mFuture.cancel(true);
@@ -79,23 +79,6 @@ public class MonitorService extends Service {
         mReadTask = new ReaderTask(this);
         mFuture = mExecutorService.scheduleWithFixedDelay(mReadTask, 1L, 1L,
                 TimeUnit.SECONDS);
-    }
-
-    private String getCpuInfo() {
-        StringBuilder cpuInfo = new StringBuilder();
-        try {
-            BufferedReader reader = new BufferedReader(
-                    new FileReader("/proc/cpuinfo")
-            );
-            String line;
-            while ((line = reader.readLine()) != null) {
-                cpuInfo.append(line).append("\n");
-            }
-            reader.close();
-        } catch (IOException e) {
-            cpuInfo.append("Error reading CPU info: ").append(e.getMessage());
-        }
-        return cpuInfo.toString();
     }
 
     @Override
@@ -207,6 +190,13 @@ public class MonitorService extends Service {
     // work Task
     private static class ReaderTask implements Runnable {
 
+        public static final String LABEL_MEMORY_INFO_DATE = "Memory info Date: ";
+        public static final String SEPARATOR = " ===========================\n";
+        public static final String UNIT_KB = "  kB\n";
+        public static final String UNIT_PERCENT = "  %\n";
+        public static final String PREFIX_MEMORY_INFO = "MemoryInfo";
+        public static final String SUFFIX_RECORD = ".Record";
+
         private final MonitorService mService;
 
         private final MonitorData mData;
@@ -214,231 +204,168 @@ public class MonitorService extends Service {
         // record information
         private OutputStreamWriter mWriter;
 
+        /**
+         * Constructor of ReaderTask
+         * @param svr MonitorService
+         */
         public ReaderTask(MonitorService svr) {
-            this.mService = svr;
+            WeakReference<MonitorService> ref = new WeakReference<MonitorService>(svr);
+            this.mService = ref.get();
 
             mData = new MonitorData();
-
         }
 
-        private boolean ReadOnlyOne;
-        private boolean WriteOnlyOne;
+        private boolean mReadOnly;
+        private boolean mWriteOnly;
 
         private BufferedReader mReader;
 
         private boolean mNeedRecord;
 
-        private long mWorkBefoure;
-        private long mTotalBefoure;
-
         @Override
         public void run() {
-
-            try {
-                mReader = new BufferedReader(new FileReader(
-                        Utils.PROC_MEMINFO_PATH));
-                String meminfo = mReader.readLine();
-
-                while (meminfo != null) {
-                    // read mem total
-                    if (!ReadOnlyOne
-                            && meminfo.startsWith(Utils.MEM_TOTAL_ITEM)) {
-                        ReadOnlyOne = true;
-                        String memtotal = meminfo.split("[ ]+", 3)[1];
-                        this.mData.setMemTotal(memtotal);
+            Map<String, Consumer<String>> keyActionMap = new HashMap<String, Consumer<String>>() {{
+                put(Utils.MEM_TOTAL_ITEM, value -> {
+                    if (!mReadOnly) {
+                        mReadOnly = true;
+                        mData.setMemTotal(value);
                     }
+                });
+                put(Utils.MEM_FREE_ITEM, mData::setMemfree);
+                put(Utils.BUFFERS_ITEM, mData::setBuffers);
+                put(Utils.CACHED_ITEM, mData::setCached);
+                put(Utils.ACTIVE_ITEM, mData::setActive);
+                put(Utils.INACTIVE_ITEM, mData::setInactive);
+                put(Utils.DIRTY_ITEM, mData::setDirty);
+                put(Utils.VM_ALLOC_TOTAL_ITEM, mData::setVmallocTotal);
+                put(Utils.VM_ALLOC_USED_ITEM, mData::setVmallocUsed);
+                put(Utils.VM_ALLOC_CHUNK_ITEM, mData::setVmallocChunk);
+            }};
 
-                    if (meminfo.startsWith(Utils.MEM_FREE_ITEM)) {
-                        String memfree = meminfo.split("[ ]+", 3)[1];
-                        this.mData.setMemfree(memfree);
+            try (BufferedReader reader = new BufferedReader(new FileReader(Utils.PROC_MEM_INFO_PATH))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    if (line.isEmpty()) continue;
+
+                    String[] parts = line.trim().split("\\s+", 3);
+                    if (parts.length < 2) continue;
+
+                    String key = parts[0];
+                    String value = parts[1];
+
+                    Consumer<String> action = keyActionMap.get(key);
+                    if (action != null) {
+                        action.accept(value);
                     }
-
-                    if (meminfo.startsWith(Utils.BUFFERS_ITEM)) {
-                        String buffers = meminfo.split("[ ]+", 3)[1];
-                        this.mData.setBuffers(buffers);
-                    }
-
-                    if (meminfo.startsWith(Utils.CACHED_ITEM)) {
-                        String buffers = meminfo.split("[ ]+", 3)[1];
-                        this.mData.setCached(buffers);
-                    }
-
-                    if (meminfo.startsWith(Utils.ACTIVE_ITEM)) {
-                        String buffers = meminfo.split("[ ]+", 3)[1];
-                        this.mData.setActive(buffers);
-                    }
-
-                    if (meminfo.startsWith(Utils.INACTIVE_ITEM)) {
-                        String buffers = meminfo.split("[ ]+", 3)[1];
-                        this.mData.setInactive(buffers);
-                    }
-
-                    if (meminfo.startsWith(Utils.DIRTY_ITEM)) {
-                        String buffers = meminfo.split("[ ]+", 3)[1];
-                        this.mData.setDirty(buffers);
-                    }
-
-                    if (meminfo.startsWith(Utils.VMALLOCTOTAL_ITEM)) {
-                        String buffers = meminfo.split("[ ]+", 3)[1];
-                        this.mData.setVmallocTotal(buffers);
-                    }
-
-                    if (meminfo.startsWith(Utils.VMALLOCUSED_ITEM)) {
-                        String buffers = meminfo.split("[ ]+", 3)[1];
-                        this.mData.setVmallocUsed(buffers);
-                    }
-
-                    if (meminfo.startsWith(Utils.VMALLOCCHUNK_ITEM)) {
-                        String buffers = meminfo.split("[ ]+", 3)[1];
-                        this.mData.setVmallocChunk(buffers);
-                    }
-
-                    meminfo = mReader.readLine();
                 }
 
-
-                // log cpu usage
+                // Log CPU usage
                 String cpuInfo = Utils.readCpuUsageFromTop();
                 Utils.info(this, "cpuInfo: " + cpuInfo);
-                String[] cpuState = cpuInfo.split("[ ]+", 9);
-                // dump cpuState by loop
-//                for (String state : cpuState) {
-//                    Utils.info(this, "state: " + state);
-//                }
+
                 double cpuWork = Utils.calculateCpuUsage(cpuInfo);
-                String cpuAverage = String.format("%.2f", cpuWork);
-                this.mData.setCpuWork(cpuAverage);
+                String cpuAverage = String.format(Locale.getDefault(), "%.2f", cpuWork);
+                mData.setCpuWork(cpuAverage);
 
-//                Process process = Runtime.getRuntime().exec("top -n 1");
-//                mReader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-//                try {
-//                    mReader = new BufferedReader(new FileReader(
-//                            Utils.PROC_STAT_PATH));
-//                    String[] cpuState = mReader.readLine().split("[ ]+", 9);
-//                    // dump cpuState by loop
-//                    for (String state : cpuState) {
-//                        Utils.info(this, "state: " + state);
-//                    }
-//                } catch (Exception e) {
-//                    // log exception
-//                    Utils.info(this, e.getMessage());
-//
-//                }
-
-//                long work = Long.parseLong(cpuState[1])
-//                        + Long.parseLong(cpuState[2])
-//                        + Long.parseLong(cpuState[3]);
-//                long total = work + Long.parseLong(cpuState[4])
-//                        + Long.parseLong(cpuState[5])
-//                        + Long.parseLong(cpuState[6])
-//                        + Long.parseLong(cpuState[7]);
-//
-//                if (this.mTotalBefoure != 0) {
-//                    long workTemp = work - this.mWorkBefoure;
-//                    long totalTemp = total - this.mTotalBefoure;
-//                    float cpuWork = (workTemp * 100.0f) / totalTemp;
-//                    String cpuAverage = String.format("%.2f", cpuWork);
-//
-//                    this.mData.setCpuWork(cpuAverage);
-//                } else {
-//                    this.mData.setCpuWork("0.00");
-//                }
-
-//                this.mWorkBefoure = work;
-//                this.mTotalBefoure = total;
-
-                this.mService.readData(this.mData);
+                // Send data
+                mService.readData(mData);
                 if (mNeedRecord) {
                     startRecord();
                 }
+
             } catch (FileNotFoundException e) {
                 String info = e.getMessage();
                 Utils.info(this, info);
-                // broadcast
-                this.mService.showInfoAction(info);
+                mService.showInfoAction(info);
             } catch (IOException e) {
                 e.printStackTrace();
-            } finally {
-                closeIO(mReader);
             }
 
         }
 
-        private void closeIO(Closeable ioObject) {
-
-            try {
-                ioObject.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-
+        /**
+         * Start to record data
+         */
         private void startRecord() {
+            // Create file
             if (this.mWriter == null) {
                 this.mWriter = getOutputWriter();
             }
 
             try {
+                long currentTimeMillis = System.currentTimeMillis();
+                String currentTimeStr = Calendar.getInstance().getTime().toString();
 
-                if (!WriteOnlyOne) {
+                StringBuilder sb = new StringBuilder();
 
-                    try {
-                        mWriter.write("Memory info Date: "
-                                + Calendar.getInstance().getTime()
-                                + "===========================\n");
-                        WriteOnlyOne = true;
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-
+                if (!mWriteOnly) {
+                    sb.append(LABEL_MEMORY_INFO_DATE)
+                            .append(currentTimeStr)
+                            .append(SEPARATOR);
+                    mWriteOnly = true;
                 }
-                mWriter.write(Calendar.getInstance().getTimeInMillis()
-                        + "===========================\n");
-                mWriter.write("MemTotal: " + mData.getMemTotal() + "  kB\n");
-                mWriter.write("MemFree: " + mData.getMemfree() + "  kB\n");
-                mWriter.write("Buffers: " + mData.getBuffers() + "  kB\n");
-                mWriter.write("Cached: " + mData.getCached() + "  kB\n");
-                mWriter.write("Active: " + mData.getActive() + "  kB\n");
-                mWriter.write("Inactive: " + mData.getInactive() + "  kB\n");
-                mWriter.write("VmallocTotal: " + mData.getVmallocTotal()
-                        + "  kB\n");
-                mWriter.write("VmallocUsed: " + mData.getVmallocUsed()
-                        + "  kB\n");
-                mWriter.write("VmallocChunk: " + mData.getVmallocChunk()
-                        + "  kB\n");
-                mWriter.write("CpuWork: " + mData.getCpuWork() + "  %\n");
+
+                sb.append(currentTimeMillis)
+                        .append(SEPARATOR)
+                        .append(Utils.MEM_TOTAL_ITEM).append(" ").append(mData.getMemTotal()).append(UNIT_KB)
+                        .append(Utils.MEM_FREE_ITEM).append(" ").append(mData.getMemfree()).append(UNIT_KB)
+                        .append(Utils.BUFFERS_ITEM).append(" ").append(mData.getBuffers()).append(UNIT_KB)
+                        .append(Utils.CACHED_ITEM).append(" ").append(mData.getCached()).append(UNIT_KB)
+                        .append(Utils.ACTIVE_ITEM).append(" ").append(mData.getActive()).append(UNIT_KB)
+                        .append(Utils.INACTIVE_ITEM).append(" ").append(mData.getInactive()).append(UNIT_KB)
+                        .append(Utils.VM_ALLOC_TOTAL_ITEM).append(" ").append(mData.getVmallocTotal()).append(UNIT_KB)
+                        .append(Utils.VM_ALLOC_USED_ITEM).append(" ").append(mData.getVmallocUsed()).append(UNIT_KB)
+                        .append(Utils.VM_ALLOC_CHUNK_ITEM).append(" ").append(mData.getVmallocChunk()).append(UNIT_KB)
+                        .append(Utils.CPU_WORK_ITEM).append(" ").append(mData.getCpuWork()).append(UNIT_PERCENT);
+
+                mWriter.write(sb.toString());
+
             } catch (IOException e) {
                 e.printStackTrace();
             }
-
         }
+
 
         public void enableRecord(boolean enable) {
             this.mNeedRecord = enable;
         }
 
+        /**
+         * Stop to record data
+         */
         public void stopRecord() {
-
-            if (!mNeedRecord) {
+            if (!mNeedRecord || mWriter == null) {
                 return;
             }
 
             try {
                 mWriter.flush();
-                mWriter.close();
-                mWriter = null;
             } catch (IOException e) {
+                System.err.println("Flush failed in stopRecord(): " + e.getMessage());
                 e.printStackTrace();
             }
 
+            try {
+                mWriter.close();
+            } catch (IOException e) {
+                System.err.println("Close failed in stopRecord(): " + e.getMessage());
+                e.printStackTrace();
+            } finally {
+                mWriter = null;
+            }
         }
 
+
+        /**
+         * Get output writer
+         * @return OutputWriter of file
+         */
         private OutputStreamWriter getOutputWriter() {
             OutputStreamWriter writer = null;
             StringBuilder fileNameBuilder = new StringBuilder();
-            fileNameBuilder.append("MemoryInfo");
+            fileNameBuilder.append(PREFIX_MEMORY_INFO);
             fileNameBuilder.append(Calendar.getInstance().getTime());
-            fileNameBuilder.append(".Record");
+            fileNameBuilder.append(SUFFIX_RECORD);
 
             try {
                 writer = new OutputStreamWriter(this.mService.openFileOutput(
@@ -453,8 +380,10 @@ public class MonitorService extends Service {
 
     }
 
-    private final MonitorServiceStub mNatievBinder = new MonitorServiceStub(this);
+    // monitor service stub
+    private final MonitorServiceStub mNativeBinder = new MonitorServiceStub(this);
 
+    // reader task
     private ReaderTask mReadTask;
 
     // The stub of the monitor service
@@ -463,7 +392,8 @@ public class MonitorService extends Service {
         private final MonitorService mService;
 
         public MonitorServiceStub(MonitorService svr) {
-            this.mService = svr;
+            WeakReference<MonitorService> ref = new WeakReference<MonitorService>(svr);
+            this.mService = ref.get();
         }
 
         @Override

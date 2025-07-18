@@ -5,12 +5,11 @@
  * ===========================================================================
  * 
  * File Name: Utils.java
- * Brief: 
+ * Brief: This class defines the common methods
  * 
  * Author: AdamChen
  * Create Date: 2018/9/5
  */
-
 package com.adam.app.monitorapp;
 
 import android.app.AlertDialog;
@@ -20,6 +19,8 @@ import android.content.Intent;
 import android.util.Log;
 
 import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 
 /**
@@ -34,10 +35,10 @@ public abstract class Utils {
     public static final String ACTION_START_RECORD = "com.adam.app.service.action.start_recording";
     public static final String ACTION_STOP_RECORD = "com.adam.app.service.action.stop_recording";
 
+
     private static final String TAG = "MonitorDemo";
 
-    static final String PROC_MEMINFO_PATH = "/proc/meminfo";
-    static final String PROC_STAT_PATH = "/proc/stat";
+    static final String PROC_MEM_INFO_PATH = "/proc/meminfo";
 
     static final String MEM_TOTAL_ITEM = "MemTotal:";
     static final String MEM_FREE_ITEM = "MemFree:";
@@ -46,9 +47,10 @@ public abstract class Utils {
     static final String ACTIVE_ITEM = "Active:";
     static final String INACTIVE_ITEM = "Inactive:";
     static final String DIRTY_ITEM = "Dirty:";
-    static final String VMALLOCTOTAL_ITEM = "VmallocTotal:";
-    static final String VMALLOCUSED_ITEM = "VmallocUsed:";
-    static final String VMALLOCCHUNK_ITEM = "VmallocChunk:";
+    static final String VM_ALLOC_TOTAL_ITEM = "VmAllocTotal:";
+    static final String VM_ALLOC_USED_ITEM = "VmAllocUsed:";
+    static final String VM_ALLOC_CHUNK_ITEM = "VmAllocChunk:";
+    public static final String CPU_WORK_ITEM = "CpuWork:";
 
     public static void info(Object obj, String str) {
         Log.i(TAG, obj.getClass().getSimpleName() + ": " + str);
@@ -58,8 +60,8 @@ public abstract class Utils {
         Log.i(TAG, clazz.getSimpleName() + ": " + str);
     }
 
-    public static void startMonitorServiceby(Context context, String act) {
-        info(Utils.class.getSimpleName(), "startMonitorServiceby +++");
+    public static void startMonitorServiceBy(Context context, String act) {
+        info(Utils.class.getSimpleName(), "startMonitorServiceBy +++");
         Intent intent = new Intent(context, MonitorService.class);
         intent.setAction(act);
         context.startService(intent);
@@ -73,7 +75,7 @@ public abstract class Utils {
     public static void showAlertDialog(Context context, String msg, DialogInterface.OnClickListener listener) {
         info(Utils.class, "showAlertDialog");
         AlertDialog.Builder builder = new AlertDialog.Builder(context);
-        builder.setTitle("Info:");
+        builder.setTitle(R.string.alertdlg_title_info);
         builder.setMessage(msg);
         builder.setPositiveButton(context.getResources().getString(R.string.label_ok_btn),
                 listener);
@@ -82,6 +84,10 @@ public abstract class Utils {
         dialog.show();
     }
 
+    /**
+     * Read CPU usage from top command
+     * @return CPU usage
+     */
     public static String readCpuUsageFromTop() {
         StringBuilder output = new StringBuilder();
         try {
@@ -106,6 +112,11 @@ public abstract class Utils {
         }
     }
 
+    /**
+     * Calculate CPU usage from command line output
+     * @param cpuLine command line output
+     * @return CPU usage
+     */
     public static double calculateCpuUsage(String cpuLine) {
         // 假設輸入字串如: "400%cpu   0%user   0%nice   0%sys   400%idle   0%iow   0%irq   0%sirq   0%host"
         try {
@@ -135,6 +146,27 @@ public abstract class Utils {
         } catch (Exception e) {
             return -1; // 表示解析錯誤
         }
+    }
+
+    /**
+     * Get CPU information from /proc/cpuinfo
+     * @return CPU information
+     */
+    public static  String getCpuInfo() {
+        StringBuilder cpuInfo = new StringBuilder();
+        try {
+            BufferedReader reader = new BufferedReader(
+                    new FileReader("/proc/cpuinfo")
+            );
+            String line;
+            while ((line = reader.readLine()) != null) {
+                cpuInfo.append(line).append("\n");
+            }
+            reader.close();
+        } catch (IOException e) {
+            cpuInfo.append("Error reading CPU info: ").append(e.getMessage());
+        }
+        return cpuInfo.toString();
     }
 
 

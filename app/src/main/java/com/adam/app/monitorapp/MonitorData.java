@@ -5,12 +5,11 @@
  * ===========================================================================
  * 
  * File Name: MonitorData.java
- * Brief: 
+ * Brief: This class is the data class of monitor system application
  * 
  * Author: AdamChen
  * Create Date: 2018/9/7
  */
-
 package com.adam.app.monitorapp;
 
 import android.os.Parcel;

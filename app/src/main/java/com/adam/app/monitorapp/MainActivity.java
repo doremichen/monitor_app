@@ -55,7 +55,9 @@ public class MainActivity extends AppCompatActivity {
             // receive broadcast action
             if (MonitorService.ACTION_SHOW_INFO.equals(intent.getAction())) {
                 String info = intent.getStringExtra(MonitorService.KEY_INFO);
-                showAlert(info);
+                // show alert dialog
+                Utils.showAlertDialog(MainActivity.this, info, null);
+
             }
         }
     };
@@ -100,7 +102,7 @@ public class MainActivity extends AppCompatActivity {
             mSvrProxy = IMonitorService.Stub.asInterface(service);
             try {
                 mSvrProxy.registerCB(mCallBack);
-                Utils.startMonitorServiceby(MainActivity.this, Utils.ACTION_UPDATE_VIEW);
+                Utils.startMonitorServiceBy(MainActivity.this, Utils.ACTION_UPDATE_VIEW);
             } catch (RemoteException e) {
                 e.printStackTrace();
             }
@@ -126,8 +128,8 @@ public class MainActivity extends AppCompatActivity {
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         initViews();
-        BtnState.registerBtn(mStartRecord, mStopRecord, mSettings);
-        BtnState.INSTANCE.configBtnFuntion(false);
+        BtnState.INSTANCE.registerButtons(mStartRecord, mStopRecord, mSettings);
+        BtnState.INSTANCE.applyRecordingUiState(false);
 
         IntentFilter filter = new IntentFilter(MonitorService.ACTION_SHOW_INFO);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -229,14 +231,14 @@ public class MainActivity extends AppCompatActivity {
 
     public void onStartRecord(View v) {
         showInfo("Start recording...");
-        BtnState.INSTANCE.configBtnFuntion(true);
-        Utils.startMonitorServiceby(this, Utils.ACTION_START_RECORD);
+        BtnState.INSTANCE.applyRecordingUiState(true);
+        Utils.startMonitorServiceBy(this, Utils.ACTION_START_RECORD);
     }
 
     public void onStopRecord(View v) {
         showInfo("Stop recording...");
-        BtnState.INSTANCE.configBtnFuntion(false);
-        Utils.startMonitorServiceby(this, Utils.ACTION_STOP_RECORD);
+        BtnState.INSTANCE.applyRecordingUiState(false);
+        Utils.startMonitorServiceBy(this, Utils.ACTION_STOP_RECORD);
     }
 
     public void onGC(View v) {
@@ -256,26 +258,25 @@ public class MainActivity extends AppCompatActivity {
         Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
     }
 
-    private void showAlert(String msg) {
-        new AlertDialog.Builder(this)
-                .setTitle("Info")
-                .setMessage(msg)
-                .setPositiveButton(android.R.string.ok, null)
-                .show();
-    }
 
     private enum BtnState {
         INSTANCE;
 
-        private static Button mStartBtn, mStopBtn, mSettingBtn;
+        private Button mStartBtn, mStopBtn, mSettingBtn;
 
-        public static void registerBtn(Button start, Button stop, Button setting) {
+        public void registerButtons(Button start, Button stop, Button setting) {
             mStartBtn = start;
             mStopBtn = stop;
             mSettingBtn = setting;
         }
 
-        void configBtnFuntion(boolean isRecording) {
+        void applyRecordingUiState(boolean isRecording) {
+            // check Buttons is null
+            if (mStartBtn == null || mStopBtn == null || mSettingBtn == null) {
+                // throw illegal state exception
+                throw new IllegalStateException("Button is null");
+            }
+
             mStartBtn.setEnabled(!isRecording);
             mStopBtn.setEnabled(isRecording);
             mSettingBtn.setEnabled(!isRecording);

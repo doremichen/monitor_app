@@ -5,12 +5,11 @@
  * ===========================================================================
  * 
  * File Name: MonitorApplication.java
- * Brief: 
+ * Brief: This class is the application class of monitor system application
  * 
  * Author: AdamChen
  * Create Date: 2018/9/5
  */
-
 package com.adam.app.monitorapp;
 
 import android.app.Application;
